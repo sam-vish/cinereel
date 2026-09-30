@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>cinereel · Northstar launch</title>
+<!-- Self-host fonts in ./fonts for bulletproof renders; the CDN link is a convenience. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=block" rel="stylesheet">
+<style>
+:root {
+  --bg: #07070a;
+  --panel: #0f1016;
+  --panel-2: #151722;
+  --line: rgba(255,255,255,.08);
+  --text: #f4f4f7;
+  --muted: #8b8d9c;
+  --accent: #7c5cff;
+  --accent-2: #38bdf8;
+  --good: #34d399;
+  --bad: #fb7185;
+  --font: "Inter", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "DejaVu Sans Mono", monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font); -webkit-font-smoothing: antialiased; }
+body { position: relative; }
+
+/* ── stage primitives (keep these) ───────────────────────── */
+.scene { position: absolute; inset: 0; opacity: 0; visibility: hidden; will-change: opacity, transform; overflow: hidden; }
+.cr-camera { position: absolute; inset: 0; will-change: transform; }
+#cr-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 50; }
+.glow-bg { position: absolute; inset: -20%; background:
+  radial-gradient(40% 35% at 30% 30%, rgba(124,92,255,.28), transparent 70%),
+  radial-gradient(35% 30% at 75% 70%, rgba(56,189,248,.18), transparent 70%); }
+
+/* ── scene 0: title ─────────────────────────────────────── */
+.title-wrap { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 36px; }
+.mark { width: 96px; height: 96px; border-radius: 28px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); display: grid; place-items: center; box-shadow: 0 20px 60px rgba(124,92,255,.45); }
+.mark svg { width: 52px; height: 52px; }
+.headline { font-size: 112px; font-weight: 800; letter-spacing: -0.045em; line-height: 1; text-align: center; max-width: 1500px; }
+.headline .cr-w:last-child { background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* ── app window ─────────────────────────────────────────── */
+.window { position: absolute; left: 160px; top: 110px; width: 1600px; height: 860px; border-radius: 22px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 60px 140px rgba(0,0,0,.6); overflow: hidden; display: grid; grid-template-columns: 240px 1fr; }
+.side { border-right: 1px solid var(--line); padding: 26px 18px; display: flex; flex-direction: column; gap: 6px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; margin-bottom: 22px; }
+.brand i { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); display: block; }
+.nav { font-size: 15px; color: var(--muted); padding: 10px 12px; border-radius: 10px; }
+.nav.active { color: var(--text); background: var(--panel-2); }
+.main { padding: 30px 36px; display: flex; flex-direction: column; gap: 22px; }
+.topbar { display: flex; align-items: center; justify-content: space-between; }
+.topbar h2 { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
+.btn { font: 600 15px var(--font); color: #fff; background: var(--accent); padding: 12px 18px; border-radius: 12px; display: inline-block; }
+.btn.ghost { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.kpi { background: var(--panel-2); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+.kpi .label { font-size: 14px; color: var(--muted); }
+.kpi .value { font-size: 40px; font-weight: 700; letter-spacing: -0.03em; margin-top: 8px; font-variant-numeric: tabular-nums; }
+.kpi .delta { font-size: 14px; margin-top: 6px; color: var(--good); }
+.charts { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; flex: 1; }
+.card { background: var(--panel-2); border: 1px solid var(--line); border-radius: 16px; padding: 22px; position: relative; display: flex; flex-direction: column; min-height: 0; }
+.card h3 { font-size: 16px; font-weight: 600; color: var(--muted); margin-bottom: 18px; }
+.bars { display: flex; align-items: flex-end; gap: 14px; flex: 1; min-height: 0; }
+.bar { flex: 1; border-radius: 8px 8px 3px 3px; background: linear-gradient(180deg, var(--accent), rgba(124,92,255,.35)); }
+.line-svg { width: 100%; flex: 1; min-height: 0; }
+.toast { position: absolute; right: 36px; bottom: 32px; background: #fff; color: #0b0b10; border-radius: 14px; padding: 16px 20px; display: flex; gap: 12px; align-items: center; font-weight: 600; box-shadow: 0 20px 50px rgba(0,0,0,.45); opacity: 0; }
+.toast b { width: 26px; height: 26px; border-radius: 50%; background: var(--good); display: grid; place-items: center; color: #fff; font-size: 15px; }
+
+/* ── scene 2: ask ───────────────────────────────────────── */
+.ask { position: absolute; left: 360px; top: 190px; width: 1200px; display: flex; flex-direction: column; gap: 22px; }
+.ask-bar { background: var(--panel-2); border: 1px solid var(--line); border-radius: 18px; padding: 26px 28px; font-size: 34px; font-weight: 500; letter-spacing: -0.01em; display: flex; gap: 18px; align-items: center; min-height: 96px; }
+.ask-bar .spark { color: var(--accent); font-size: 30px; }
+.answer { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 30px 32px; display: flex; flex-direction: column; gap: 18px; }
+.answer .row { display: flex; gap: 16px; align-items: baseline; font-size: 24px; color: #d6d7e0; line-height: 1.4; }
+.answer .row em { font-style: normal; color: var(--muted); font-family: var(--mono); font-size: 18px; min-width: 34px; }
+.insight { border-radius: 14px; padding: 18px 20px; background: rgba(124,92,255,.12); border: 1px solid rgba(124,92,255,.4); font-size: 24px; font-weight: 600; }
+
+/* ── scene 3: end card ──────────────────────────────────── */
+.end { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; }
+.end .name { font-size: 132px; font-weight: 800; letter-spacing: -0.05em; }
+.end .url { font-family: var(--mono); font-size: 30px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- ═════════ s0 · cold open ═════════ -->
+<section class="scene" data-scene="intro">
+  <div class="cr-camera">
+    <div class="glow-bg"></div>
+    <div class="title-wrap">
+      <div class="mark" id="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M12 2v6M12 16v6M2 12h6M16 12h6M5 5l3.5 3.5M15.5 15.5 19 19M19 5l-3.5 3.5M8.5 15.5 5 19"/></svg></div>
+      <h1 class="headline" id="headline" data-split="words">Your revenue, finally legible.</h1>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════ s1 · dashboard ═════════ -->
+<section class="scene" data-scene="dash">
+  <div class="cr-camera">
+    <div class="glow-bg" style="opacity:.5"></div>
+    <div class="window" id="win">
+      <aside class="side">
+        <div class="brand"><i></i>Northstar</div>
+        <div class="nav active">Overview</div><div class="nav">Revenue</div><div class="nav">Customers</div>
+        <div class="nav">Churn</div><div class="nav">Ask AI</div><div class="nav">Settings</div>
+      </aside>
+      <div class="main">
+        <div class="topbar"><h2>Overview</h2><div><span class="btn ghost">Last 90 days</span> <span class="btn" id="export">Export report</span></div></div>
+        <div class="kpis" id="kpis">
+          <div class="kpi"><div class="label">MRR</div><div class="value" id="k-mrr">$0</div><div class="delta">▲ 18.2%</div></div>
+          <div class="kpi"><div class="label">Active accounts</div><div class="value" id="k-acc">0</div><div class="delta">▲ 9.4%</div></div>
+          <div class="kpi"><div class="label">Net retention</div><div class="value" id="k-nrr">0%</div><div class="delta">▲ 3.1 pts</div></div>
+          <div class="kpi"><div class="label">Churn</div><div class="value" id="k-churn">0%</div><div class="delta" style="color:var(--bad)">▲ 0.4 pts</div></div>
+        </div>
+        <div class="charts">
+          <div class="card" id="bar-card"><h3>Revenue by month</h3>
+            <div class="bars">
+              <div class="bar" style="height:38%"></div><div class="bar" style="height:46%"></div><div class="bar" style="height:44%"></div>
+              <div class="bar" style="height:57%"></div><div class="bar" style="height:63%"></div><div class="bar" style="height:61%"></div>
+              <div class="bar" style="height:72%"></div><div class="bar" style="height:80%"></div><div class="bar" style="height:92%"></div>
+            </div>
+          </div>
+          <div class="card" id="line-card"><h3>Retention cohort</h3>
+            <svg class="line-svg" viewBox="0 0 500 300" preserveAspectRatio="none">
+              <path id="line" d="M0,250 C60,240 90,180 150,170 S260,120 320,110 S430,60 500,40" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="toast" id="toast"><b>✓</b>Board report exported</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════ s2 · ask AI ═════════ -->
+<section class="scene" data-scene="ask">
+  <div class="cr-camera">
+    <div class="glow-bg" style="opacity:.7"></div>
+    <div class="ask">
+      <div class="ask-bar" id="ask-bar"><span class="spark">✦</span><span id="q"></span></div>
+      <div class="answer" id="answer">
+        <div class="row"><em>01</em>Churn rose 0.4 pts in March, concentrated in the Starter plan.</div>
+        <div class="row"><em>02</em>71% of churned accounts never connected a data source.</div>
+        <div class="insight" id="insight">Fix onboarding step 2 → recover ≈ $18.4k MRR / quarter</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════ s3 · end card ═════════ -->
+<section class="scene" data-scene="outro">
+  <div class="cr-camera">
+    <div class="glow-bg"></div>
+    <div class="end">
+      <div class="mark" id="mark2"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M12 2v6M12 16v6M2 12h6M16 12h6M5 5l3.5 3.5M15.5 15.5 19 19M19 5l-3.5 3.5M8.5 15.5 5 19"/></svg></div>
+      <div class="name" id="name">Northstar</div>
+      <div class="url" id="url">northstar.app — start free</div>
+    </div>
+  </div>
+</section>
+
+<div id="cr-overlay"></div>
+
+<script src="timeline.js"></script>
+<script src="cinereel-runtime.js"></script>
+</body>
+</html>
